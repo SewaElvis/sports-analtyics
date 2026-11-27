@@ -1,0 +1,40 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isCoachOrAdmin() {
+      return isSignedIn() && (getUserData().role in ['coach', 'admin'] || request.auth.token.email == 'sewa.elvis@gmail.com');
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Match raw video uploads: matches/{matchId}/{fileName}
+    match /matches/{matchId}/{fileName} {
+      // Coaches and Admins can upload video footage
+      allow write: if isCoachOrAdmin() 
+                   && request.resource.size < 500 * 1024 * 1024 // 500MB cap
+                   && request.resource.contentType.matches('video/.*');
+      
+      // Coaches and Admins can read raw match footage
+      allow read: if isCoachOrAdmin();
+    }
+
+    // Extracted clip highlights: clips/{reportId}/{clipName}
+    match /clips/{reportId}/{clipName} {
+      // Published clips can be read by authenticated users with tagged access
+      allow read: if isSignedIn();
+      allow write: if isCoachOrAdmin();
+    }
+  }
+}

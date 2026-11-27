@@ -1,0 +1,6 @@
+{
+  "name": "UCU Smart Multi-Field Sports Analytics",
+  "description": "Smart Multi-Field Sports Video & Statistical Analytics Platform for Uganda Christian University Sports Department, featuring AI video event extraction, fusion conflict detection, verified grounded match reports, and athlete privacy controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

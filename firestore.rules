@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common security helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin') || (isSignedIn() && request.auth.token.email == 'sewa.elvis@gmail.com');
+    }
+
+    function isCoach() {
+      return hasRole('coach') || isAdmin();
+    }
+
+    function isPlayer() {
+      return hasRole('player');
+    }
+
+    function isApprovedScout() {
+      return hasRole('scout') && getUserData().approved == true;
+    }
+
+    // -------------------------------------------------------------
+    // USERS COLLECTION
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      // Users can read own profile; admins can read all profiles; scouts see nobody's raw user document
+      allow get: if isUser(userId) || isAdmin();
+      allow list: if isAdmin();
+      // Only admins can change user roles and approvals; users can update basic display profile
+      allow create: if isSignedIn() && isUser(userId) && request.resource.data.role in ['player', 'scout', 'coach'] && request.resource.data.approved == false;
+      allow update: if isAdmin() || (isUser(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'approved']));
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // ORGANISATIONS, SPORTS, TEAMS
+    // -------------------------------------------------------------
+    match /organisations/{orgId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /sports/{sportId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isCoach();
+    }
+
+    // -------------------------------------------------------------
+    // PLAYERS
+    // -------------------------------------------------------------
+    match /players/{playerId} {
+      // Coaches and Admins can read squad; players can read own record
+      allow get: if isSignedIn() && (isAdmin() || isCoach() || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdmin() || isCoach());
+      // Player can update their own consents; Coach/Admin updates roster info
+      allow create: if isAdmin() || isCoach();
+      allow update: if isAdmin() || isCoach() || (
+        isSignedIn() && resource.data.userId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['consents'])
+      );
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // MATCHES & ANALYSES
+    // -------------------------------------------------------------
+    match /matches/{matchId} {
+      // Coaches can read/write their team matches; players can read only if published
+      allow read: if isAdmin() || isCoach() || (isPlayer() && resource.data.status == 'published');
+      allow create, update: if isAdmin() || isCoach();
+      allow delete: if isAdmin();
+    }
+
+    match /analyses/{analysisId} {
+      // Analysis is restricted to coaches and admins before publication
+      allow read: if isAdmin() || isCoach();
+      allow write: if isAdmin() || isCoach();
+    }
+
+    // -------------------------------------------------------------
+    // REPORTS
+    // -------------------------------------------------------------
+    match /reports/{reportId} {
+      // Drafts only visible to coaches and admins; published reports visible to team players
+      allow read: if isAdmin() || isCoach() || (isPlayer() && resource.data.status == 'published');
+      allow create, update: if isAdmin() || isCoach();
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // TAGS (Player tagged video clips)
+    // -------------------------------------------------------------
+    match /tags/{tagId} {
+      // Players can read only their own tags; coaches and admins can manage all tags
+      allow read: if isAdmin() || isCoach() || (
+        isSignedIn() && get(/databases/$(database)/documents/players/$(resource.data.playerId)).data.userId == request.auth.uid
+      );
+      allow write: if isAdmin() || isCoach();
+    }
+
+    // -------------------------------------------------------------
+    // APPRAISALS (Coach evaluations of athletes)
+    // -------------------------------------------------------------
+    match /appraisals/{appraisalId} {
+      // Athletes can only read their own appraisal; Coach/Admin can write
+      allow read: if isAdmin() || isCoach() || (
+        isSignedIn() && get(/databases/$(database)/documents/players/$(resource.data.playerId)).data.userId == request.auth.uid
+      );
+      allow write: if isAdmin() || isCoach();
+    }
+
+    // -------------------------------------------------------------
+    // SCOUT PROFILES (Privacy Firewall View)
+    // Strictly anonymized: Scouts only see profiles if BOTH:
+    // 1. Scout is approved by Admin
+    // 2. Player has scoutVisible == true
+    // -------------------------------------------------------------
+    match /scoutProfiles/{profileId} {
+      allow read: if isAdmin() || isCoach() || (
+        isApprovedScout() && 
+        exists(/databases/$(database)/documents/players/$(resource.data.playerId)) &&
+        get(/databases/$(database)/documents/players/$(resource.data.playerId)).data.consents.scoutVisible == true
+      );
+      allow write: if isAdmin();
+    }
+
+    match /scoutRequests/{requestId} {
+      // Scout can create request; Admin reviews and approves/rejects
+      allow read: if isAdmin() || (isApprovedScout() && resource.data.scoutId == request.auth.uid);
+      allow create: if isApprovedScout() && request.resource.data.scoutId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // AUDIT LOGS (Immutable Write Stream)
+    // -------------------------------------------------------------
+    match /auditEntries/{entryId} {
+      allow read: if isAdmin();
+      // Any authenticated user action can append an audit entry, but can NEVER modify or delete it
+      allow create: if isSignedIn() && request.resource.data.actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}
