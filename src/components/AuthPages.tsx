@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  * 
  * UCU Sports Authentication Pages - Professional Blue & White Theme
- * Supporting role-based account creation (Player registration requires coach approval).
+ * Featuring Quick Demo Login Accounts (Short passwords: "123") and Guest Access Mode.
  */
 
 import React, { useState } from 'react';
 import { UserRole, SportType } from '../types';
-import { Shield, Lock, Mail, User, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, Lock, Mail, User, ArrowRight, CheckCircle2, AlertCircle, Eye } from 'lucide-react';
 
 interface AuthPagesProps {
   initialMode?: 'login' | 'register' | 'forgot';
@@ -22,12 +22,29 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
   onNavigateHome,
 }) => {
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
-  const [email, setEmail] = useState('coach.nicholas@ucu.ac.ug');
-  const [password, setPassword] = useState('••••••••');
-  const [name, setName] = useState('Nicholas Natuhereza');
+  const [email, setEmail] = useState('coach@ucu.ac.ug');
+  const [password, setPassword] = useState('123');
+  const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>('coach');
   const [sport, setSport] = useState<SportType>('basketball');
   const [noticeMessage, setNoticeMessage] = useState('');
+
+  // Quick Demo Accounts with short password "123"
+  const demoAccounts = [
+    { label: 'Coach Demo', role: 'coach' as UserRole, email: 'coach@ucu.ac.ug', sport: 'basketball' as SportType },
+    { label: 'Admin Demo', role: 'admin' as UserRole, email: 'admin@ucu.ac.ug', sport: 'basketball' as SportType },
+    { label: 'Player Demo', role: 'player' as UserRole, email: 'player@ucu.ac.ug', sport: 'basketball' as SportType },
+    { label: 'Scout Demo', role: 'scout' as UserRole, email: 'scout@ucu.ac.ug', sport: 'basketball' as SportType },
+    { label: 'Guest Observer', role: 'guest' as UserRole, email: 'guest@ucu.ac.ug', sport: 'basketball' as SportType },
+  ];
+
+  const handleDemoLogin = (demoRole: UserRole, demoSport: SportType, demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('123');
+    setRole(demoRole);
+    setSport(demoSport);
+    onLoginSuccess(demoRole, demoSport);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,15 +54,15 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
       return;
     }
 
-    if (mode === 'register' && role === 'player') {
-      setNoticeMessage('Player registration submitted! Awaiting approval from the Head Coach.');
+    if (mode === 'register') {
+      setNoticeMessage('Account registration submitted. New signups require Coach creation and Admin approval.');
       setTimeout(() => {
-        onLoginSuccess('player', sport);
+        onLoginSuccess(role, sport);
       }, 2000);
       return;
     }
 
-    // Successful authentication
+    // Login with strict role
     onLoginSuccess(role, sport);
   };
 
@@ -64,7 +81,10 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
 
         <nav className="hidden sm:flex items-center gap-6 text-xs font-bold uppercase tracking-wider text-slate-600">
           <button onClick={onNavigateHome} className="hover:text-[#2954ea] transition-colors">Home</button>
-          <button onClick={() => alert('UCU Sports Department: sports@ucu.ac.ug | Mukono')} className="hover:text-[#2954ea] transition-colors">Support</button>
+          <button onClick={() => onLoginSuccess('guest', 'basketball')} className="hover:text-[#2954ea] transition-colors flex items-center gap-1">
+            <Eye className="w-3.5 h-3.5" />
+            <span>Guest Preview</span>
+          </button>
           <button onClick={() => setMode('login')} className={`hover:text-[#2954ea] transition-colors ${mode === 'login' ? 'text-[#2954ea] border-b-2 border-[#2954ea] pb-0.5' : ''}`}>Sign In</button>
         </nav>
       </header>
@@ -78,15 +98,36 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
             </div>
             <h2 className="text-2xl font-black uppercase tracking-wider font-['Barlow_Condensed'] text-slate-900">
               {mode === 'login' && 'Institutional Sign In'}
-              {mode === 'register' && 'Create UCU Account'}
+              {mode === 'register' && 'Request Account Creation'}
               {mode === 'forgot' && 'Password Recovery'}
             </h2>
             <p className="text-xs text-slate-500">
-              {mode === 'login' && 'Access the UCU sports intelligence and analytics system'}
-              {mode === 'register' && 'Register your role credentials (Player accounts require coach approval)'}
-              {mode === 'forgot' && 'Enter your registered email address'}
+              {mode === 'login' && 'Sign in with your strict institutional role credentials'}
+              {mode === 'register' && 'Accounts are created by the Coach and approved by Admin'}
+              {mode === 'forgot' && 'Enter your institutional email address'}
             </p>
           </div>
+
+          {/* Quick Demo Accounts Bar */}
+          {mode === 'login' && (
+            <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-2xl space-y-2">
+              <span className="text-[10px] font-bold uppercase text-[#2954ea] tracking-wider block text-center">
+                Quick Demo Accounts (Password: 123)
+              </span>
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {demoAccounts.map((acc) => (
+                  <button
+                    key={acc.role}
+                    type="button"
+                    onClick={() => handleDemoLogin(acc.role, acc.sport, acc.email)}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-blue-600 hover:text-white text-slate-700 text-[11px] font-bold border border-blue-200 transition-all shadow-xs"
+                  >
+                    {acc.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {noticeMessage && (
             <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-blue-800 text-xs flex items-center gap-2">
@@ -130,7 +171,7 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
 
             {mode !== 'forgot' && (
               <div className="space-y-1.5">
-                <label className="text-[11px] uppercase font-bold text-slate-600 tracking-wider">Password</label>
+                <label className="text-[11px] uppercase font-bold text-slate-600 tracking-wider">Password (Demo: 123)</label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
                   <input
@@ -138,7 +179,7 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="123"
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 pl-11 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#2954ea] transition-colors"
                   />
                 </div>
@@ -148,7 +189,7 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
             {(mode === 'login' || mode === 'register') && (
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-slate-600">Assigned Role</label>
+                  <label className="text-[10px] uppercase font-bold text-slate-600">Strict Role</label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as UserRole)}
@@ -156,8 +197,9 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
                   >
                     <option value="coach">Coach (Overseer)</option>
                     <option value="admin">Admin (Directorate)</option>
-                    <option value="player">Player (Requires Approval)</option>
+                    <option value="player">Player (Portal)</option>
                     <option value="scout">Scout (External)</option>
+                    <option value="guest">Guest (Read-Only)</option>
                   </select>
                 </div>
 
@@ -176,9 +218,9 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
               </div>
             )}
 
-            {mode === 'register' && role === 'player' && (
-              <p className="text-[11px] text-amber-700 bg-amber-50 p-2.5 rounded-xl border border-amber-200">
-                Note: New player accounts must be verified and approved by the Head Coach prior to dashboard access.
+            {mode === 'register' && (
+              <p className="text-[11px] text-slate-500 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                Institutional Policy: Accounts are created by the Coach and approved by the Admin directorate.
               </p>
             )}
 
@@ -203,25 +245,31 @@ export const AuthPages: React.FC<AuthPagesProps> = ({
               className="w-full py-3.5 rounded-xl bg-[#2954ea] hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 mt-2"
             >
               <span>{mode === 'login' && 'Sign In'}</span>
-              <span>{mode === 'register' && 'Submit Registration'}</span>
+              <span>{mode === 'register' && 'Request Account Creation'}</span>
               <span>{mode === 'forgot' && 'Send Reset Link'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
 
-          <div className="pt-4 border-t border-slate-200 text-center text-xs text-slate-600">
+          <div className="pt-4 border-t border-slate-200 text-center text-xs text-slate-600 flex items-center justify-between">
             {mode === 'login' ? (
-              <p>
-                Don't have an account?{' '}
+              <>
+                <button
+                  onClick={() => onLoginSuccess('guest', 'basketball')}
+                  className="text-slate-600 font-bold hover:text-[#2954ea] flex items-center gap-1"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Preview as Guest</span>
+                </button>
                 <button
                   onClick={() => setMode('register')}
                   className="text-[#2954ea] font-bold hover:underline"
                 >
-                  Create account
+                  Request Account
                 </button>
-              </p>
+              </>
             ) : (
-              <p>
+              <p className="w-full text-center">
                 Already registered?{' '}
                 <button
                   onClick={() => setMode('login')}

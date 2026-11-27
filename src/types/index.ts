@@ -5,7 +5,7 @@
  * Core Data Models & Schemas for UCU Smart Multi-Field Sports Analytics System
  */
 
-export type UserRole = 'admin' | 'coach' | 'player' | 'scout';
+export type UserRole = 'admin' | 'coach' | 'player' | 'scout' | 'guest';
 
 export type SportType = 'basketball' | 'football' | 'netball';
 

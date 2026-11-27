@@ -25,6 +25,8 @@ interface SidebarProps {
   unreadNotificationsCount?: number;
   unreadMessagesCount?: number;
   onOpenAudit: () => void;
+  onUpdateAvatar?: (url: string) => void;
+  customAvatar?: string | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -35,6 +37,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   unreadNotificationsCount = 3,
   unreadMessagesCount = 2,
   onOpenAudit,
+  onUpdateAvatar,
+  customAvatar,
 }) => {
   // Dynamic profile info based on active role
   const profileData = {
@@ -66,7 +70,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       stat2: '48 Audits',
       avatar: '/src/assets/images/avatar_coach_nicholas_1793973783261.jpg',
     },
-  }[activeRole];
+    guest: {
+      name: 'Guest Observer',
+      title: 'Read-Only Preview Mode',
+      stat1: 'Public View',
+      stat2: 'No Privileges',
+      avatar: '/src/assets/images/avatar_coach_nicholas_1793973783261.jpg',
+    },
+  }[activeRole] || {
+    name: 'Guest Observer',
+    title: 'Read-Only Preview',
+    stat1: 'Public View',
+    stat2: 'No Privileges',
+    avatar: '/src/assets/images/avatar_coach_nicholas_1793973783261.jpg',
+  };
 
   // Actor workspace routes
   const actorRoutes = [
@@ -74,6 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'player', label: 'Player Portal', role: 'player' as UserRole },
     { id: 'scout', label: 'Scout Hub', role: 'scout' as UserRole },
     { id: 'admin', label: 'Admin Deck', role: 'admin' as UserRole },
+    { id: 'guest', label: 'Guest Overview', role: 'guest' as UserRole },
   ];
 
   // Reference 2-column navigation items
@@ -96,17 +114,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-white/10 blur-xl pointer-events-none" />
         <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-blue-400/20 blur-lg pointer-events-none" />
 
-        {/* User Avatar with Glowing Yellow/Gold Accent Ring (exactly like Slava Kornilov in reference) */}
-        <div className="relative mb-2.5">
-          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 shadow-lg">
+        {/* User Avatar with Glowing Yellow/Gold Accent Ring & Upload */}
+        <label className="relative mb-2.5 cursor-pointer group/avatar block" title="Click to update profile picture">
+          <div className="w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 shadow-lg group-hover/avatar:scale-105 transition-transform">
             <img
-              src={profileData.avatar}
+              src={customAvatar || profileData.avatar}
               alt={profileData.name}
               className="w-full h-full object-cover rounded-full bg-slate-900 border-2 border-white"
             />
           </div>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && onUpdateAvatar) {
+                onUpdateAvatar(URL.createObjectURL(file));
+              }
+            }}
+          />
           <span className="absolute bottom-0 right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white shadow-xs" />
-        </div>
+        </label>
 
         {/* User Name & Subtitle */}
         <h2 className="text-base font-bold text-white tracking-tight">{profileData.name}</h2>

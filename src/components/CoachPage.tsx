@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { Match, Player, FusionFlag, MatchReport } from '../types';
 import { VideoPlayer } from './VideoPlayer';
 import { VideoGeneratorModal } from './VideoGeneratorModal';
+import { VideoComparison } from './VideoComparison';
 import { computeStatisticalFusion } from '../lib/fusionEngine';
 import { logAuditEntry } from '../lib/storage';
 import { 
@@ -45,6 +46,9 @@ export const CoachPage: React.FC<CoachPageProps> = ({
   });
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const [customMetrics, setCustomMetrics] = useState<string[]>([]);
+  const [newMetricInput, setNewMetricInput] = useState('');
 
   const sportMetrics = match.sportId === 'basketball'
     ? ['shots', 'assists', 'rebounds', 'fouls', 'turnovers']
@@ -356,8 +360,26 @@ export const CoachPage: React.FC<CoachPageProps> = ({
             <Bot className="w-3.5 h-3.5 text-blue-600" />
             <span>Tactical AI</span>
           </button>
+
+          <button
+            onClick={() => setIsComparisonOpen(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+            title="Side-by-side raw video and 3D simulation comparison"
+          >
+            <Film className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Video Comparison</span>
+          </button>
         </div>
       </div>
+
+      {isComparisonOpen ? (
+        <VideoComparison 
+          match={match} 
+          squad={squad} 
+          onClose={() => setIsComparisonOpen(false)} 
+        />
+      ) : (
+        <>
 
       {/* SECTION 1: VIDEO ANALYSIS STUDIO */}
       {activeSection === 'video' && (
@@ -371,6 +393,14 @@ export const CoachPage: React.FC<CoachPageProps> = ({
               onSelectTimestamp={(t) => setSelectedTimestamp(t)}
               onAnalyzeTrigger={handleRunGeminiAnalysis}
               isAnalyzing={isAnalyzing}
+              onUploadCustomVideo={(file) => {
+                const url = URL.createObjectURL(file);
+                onUpdateMatch({
+                  ...match,
+                  videoUrl: url,
+                  lastUpdated: new Date().toISOString(),
+                });
+              }}
             />
 
             {/* Tactical Notes Summary */}
@@ -463,16 +493,46 @@ export const CoachPage: React.FC<CoachPageProps> = ({
       {/* SECTION 2: LIVE OFFLINE BOX-SCORE COUNTERS */}
       {activeSection === 'boxscore' && (
         <div className="bwin-card p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
             <div>
               <h2 className="text-base font-bold text-slate-900">Roster Box-Score Logging (Offline-Capable)</h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Record active shots, rebounds, fouls, or passes. Changes persist locally and sync seamlessly.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span className="font-medium">Local Storage Active</span>
+            
+            {/* Match Number and Custom Column Adder */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                <span className="font-bold text-slate-700">Match ID / No.:</span>
+                <input
+                  type="text"
+                  value={match.id}
+                  onChange={(e) => onUpdateMatch({ ...match, id: e.target.value, lastUpdated: new Date().toISOString() })}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 font-mono text-xs text-slate-800 w-36"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                <input
+                  type="text"
+                  placeholder="New stat column name..."
+                  value={newMetricInput}
+                  onChange={(e) => setNewMetricInput(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-800 w-32"
+                />
+                <button
+                  onClick={() => {
+                    if (newMetricInput.trim() && ![...sportMetrics, ...customMetrics].includes(newMetricInput.trim().toLowerCase())) {
+                      setCustomMetrics([...customMetrics, newMetricInput.trim().toLowerCase()]);
+                      setNewMetricInput('');
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-[#2954ea] text-white font-bold text-xs shadow-2xs hover:bg-blue-700 transition-colors"
+                >
+                  + Add Column
+                </button>
+              </div>
             </div>
           </div>
 
@@ -480,9 +540,9 @@ export const CoachPage: React.FC<CoachPageProps> = ({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-xs text-slate-500 uppercase font-semibold">
-                  <th className="py-3 px-3">Player</th>
-                  <th className="py-3 px-3 text-center font-mono">#</th>
-                  {sportMetrics.map(m => (
+                  <th className="py-3 px-3">Player Name</th>
+                  <th className="py-3 px-3 text-center font-mono">Shirt #</th>
+                  {[...sportMetrics, ...customMetrics].map(m => (
                     <th key={m} className="py-3 px-3 text-center capitalize">{m}</th>
                   ))}
                 </tr>
@@ -499,7 +559,7 @@ export const CoachPage: React.FC<CoachPageProps> = ({
                       <td className="py-3.5 px-3 text-center font-mono font-bold text-slate-800">
                         #{player.shirtNumber}
                       </td>
-                      {sportMetrics.map((metric) => {
+                      {[...sportMetrics, ...customMetrics].map((metric) => {
                         const val = stats[metric] || 0;
                         return (
                           <td key={metric} className="py-3 px-2 text-center">
@@ -754,6 +814,8 @@ export const CoachPage: React.FC<CoachPageProps> = ({
             </div>
           )}
         </div>
+      )}
+        </>
       )}
 
       {/* Text-to-Video Generator Modal */}

@@ -59,6 +59,7 @@ export default function App() {
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isVideoGenModalOpen, setIsVideoGenModalOpen] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [customAvatar, setCustomAvatar] = useState<string | null>(null);
 
   // Active match selected for coach review
   const [selectedMatchId, setSelectedMatchId] = useState<string>('match_canons_vs_kiu');
@@ -248,6 +249,8 @@ export default function App() {
           onRoleChange={handleRoleChange}
           activeRoute={activeRoute}
           onRouteChange={navigateTo}
+          customAvatar={customAvatar}
+          onUpdateAvatar={(url) => setCustomAvatar(url)}
           onOpenAudit={() => {
             setAuditLogs(getStoredAuditLogs());
             setIsAuditModalOpen(true);

@@ -9,9 +9,10 @@
 import React, { useState } from 'react';
 import { Player, SportType, ScoutContactRequest } from '../types';
 import { saveScoutRequest, logAuditEntry } from '../lib/storage';
+import { D3Heatmap } from './D3Heatmap';
 import { 
   ShieldCheck, Lock, Search, Star, 
-  Send, UserCheck, EyeOff, AlertCircle
+  Send, UserCheck, EyeOff, AlertCircle, Flame
 } from 'lucide-react';
 
 interface ScoutPageProps {
@@ -32,6 +33,8 @@ export const ScoutPage: React.FC<ScoutPageProps> = ({
   const [activeRequestPlayer, setActiveRequestPlayer] = useState<Player | null>(null);
   const [contactMessage, setContactMessage] = useState('');
   const [submittedStatus, setSubmittedStatus] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'directory' | 'heatmap'>('directory');
 
   // CRITICAL FIREWALL: Filter only athletes who have given consent (scoutVisible == true)
   const consentingAthletes = players.filter(p => p.consents.scoutVisible);
@@ -137,6 +140,38 @@ export const ScoutPage: React.FC<ScoutPageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Sub-Tab Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+        <button
+          onClick={() => setActiveTab('directory')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'directory'
+              ? 'bg-[#2954ea] text-white shadow-sm'
+              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          }`}
+        >
+          <span>Prospect Directory ({visibleAthletes.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('heatmap')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+            activeTab === 'heatmap'
+              ? 'bg-[#2954ea] text-white shadow-sm'
+              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          }`}
+        >
+          <Flame className="w-3.5 h-3.5 text-amber-500" />
+          <span>Productivity Hotspots (D3 Heatmap)</span>
+        </button>
+      </div>
+
+      {activeTab === 'heatmap' ? (
+        <div className="space-y-6">
+          <D3Heatmap sportId={selectedSport === 'all' ? 'basketball' : selectedSport} athleteName="Consented Roster Productivity Hotspots" />
+        </div>
+      ) : (
+        <>
 
       {/* Filter and Search Bar */}
       <div className="bwin-card p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -364,6 +399,8 @@ export const ScoutPage: React.FC<ScoutPageProps> = ({
             )}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
